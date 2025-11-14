@@ -1,9 +1,8 @@
 #pragma once
-#include <memory>
 #include <string>
 #include <unordered_set>
 
-class DLLToken; // forward declaration
+class DLLToken;
 
 class Token {
 public:
