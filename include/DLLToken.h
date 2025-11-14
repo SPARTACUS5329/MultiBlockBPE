@@ -1,16 +1,14 @@
 #pragma once
 #include "Token.h"
-#include <memory>
 
-class DLLToken {
-public:
+struct DLLToken {
   int id;
-  std::shared_ptr<Token> token;
+  Token token;
   DLLToken *next;
   DLLToken *prev;
 
-  DLLToken(int id, std::shared_ptr<Token> token);
+  DLLToken(int id, const Token &tok)
+      : id(id), token(tok), next(nullptr), prev(nullptr) {}
 
-  // Merge current token with another DLLToken
-  void mergeTokens(DLLToken *other);
+  void merge_tokens(DLLToken *other) { token.val += other->token.val; }
 };

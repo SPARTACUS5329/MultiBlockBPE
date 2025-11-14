@@ -1,24 +1,27 @@
-#include "DLLToken.h"
-#include "Token.h"
+#include "utils.h"
+#include <cstdio>
 #include <iostream>
+#include <string>
 
-int main() {
-  auto t1 = std::make_shared<Token>(1, "he");
-  auto t2 = std::make_shared<Token>(2, "llo");
+void error(const char *msg) {
+  perror(msg);
+  exit(1);
+}
 
-  DLLToken node1(1, t1);
-  DLLToken node2(2, t2);
+int main(int argc, char *argv[]) {
+  if (argc < 2) {
+    error("[main] Not enough input arguments: expected file address");
+  }
 
-  node1.next = &node2;
-  node2.prev = &node1;
+  const std::string filename = argv[1];
+  std::string content = readFile(filename);
+  DLLToken *dllHead = initDLL(content);
 
-  std::cout << "Before merge: " << node1.token->val << " " << node2.token->val
-            << "\n";
-  node1.mergeTokens(&node2);
-  std::cout << "After merge: " << node1.token->val << "\n";
-
-  std::vector<DLLToken *> toRemove = {&node1, &node2};
-  node1.token->removeOccurrences(toRemove);
+  auto *dllToken = dllHead;
+  while (dllToken) {
+    std::cout << dllToken->token.val << " ";
+    dllToken = dllToken->next;
+  }
 
   return 0;
 }
