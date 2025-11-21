@@ -1,1 +1,2 @@
-this is a sample piece of text that I'm using to check whether my basic tokenizer is working or not
+this is a sample piece of text that I'm using to check whether my basic tokenizer is working or not because 1000 is a number but 10 and 0 do not make 100
+Now let me check if    the spaces   are working  as expected  or not   
