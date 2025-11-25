@@ -1,7 +1,11 @@
 #include "utils.h"
 #include <cstdio>
 #include <iostream>
+#include <unordered_map>
+#include <vector>
 #include <string>
+
+#define MAX_SEQ_LEN 1024
 
 extern "C"
 {
@@ -10,15 +14,7 @@ extern "C"
   extern FILE *yyin;
   enum TokenType
   {
-    SUFFIX = 1,
-    SPACED_LETTER_SEQ,
-    SPACED_NUMBER_SEQ,
-    SPACED_PUNCTUATION_SEQ,
-    LETTER_SEQ,
-    NUMBER_SEQ,
-    PUNCTUATION_SEQ,
-    SPACE,
-    FALLBACK_CHAR
+    PRE_TOKEN = 1,
   };
 }
 
@@ -45,45 +41,39 @@ int main(int argc, char *argv[])
   yyin = f;
 
   int token;
+  std::vector<int> tokens;
+  std::vector<int> nextToken;
+  std::unordered_map<std::string, int> tokenIDMap;
+  // populate token_id_map from vocab.json
+  // token_id_map["\'"] = 12;
+  // token_id_map["s"] = 24;
+
   while ((token = yylex()) != 0)
   {
     switch (token)
     {
-
-    case SUFFIX:
-      printf("SUFFIX: %s\n", yytext);
+    case PRE_TOKEN:
+      // Parallelize the for loop
+      int i;
+      for (i = 0; yytext[i] != '\0'; i++)
+      {
+        std::string key(1, yytext[i]);
+        tokens.push_back(tokenIDMap[key]);
+        nextToken.push_back(i + 1);
+      }
+      nextToken.back() = -1;
       break;
-    case SPACED_LETTER_SEQ:
-      printf("SPACED_LETTER_SEQ: %s\n", yytext);
-      break;
-    case SPACED_NUMBER_SEQ:
-      printf("SPACED_NUMBER_SEQ: %s\n", yytext);
-      break;
-    case SPACED_PUNCTUATION_SEQ:
-      printf("SPACED_PUNCTUATION_SEQ: %s\n", yytext);
-      break;
-    case LETTER_SEQ:
-      printf("LETTER_SEQ: %s\n", yytext);
-      break;
-    case NUMBER_SEQ:
-      printf("NUMBER_SEQ: %s\n", yytext);
-      break;
-    case PUNCTUATION_SEQ:
-      printf("PUNCTUATION_SEQ: %s\n", yytext);
-      break;
-    case SPACE:
-      printf("SPACE: %s\n", yytext);
-      break;
-    case FALLBACK_CHAR:
-      printf("FALLBACK_CHAR: %s\n", yytext);
-      break;
-
     default:
       std::cout << "[UNKNOWN] " << yytext << "\n";
     }
   }
 
   fclose(f);
+
+  for (auto &p : nextToken)
+  {
+    std::cout << p << " ";
+  }
 
   return 0;
 }

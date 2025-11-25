@@ -3,32 +3,24 @@
 %{
 #include <stdio.h>
 enum TokenType {
-    SUFFIX = 1,
-    SPACED_LETTER_SEQ,
-    SPACED_NUMBER_SEQ,
-    SPACED_PUNCTUATION_SEQ,
-    LETTER_SEQ,
-    NUMBER_SEQ,
-    PUNCTUATION_SEQ,
-    SPACE,
-    FALLBACK_CHAR
+    PRE_TOKEN = 1
 };
 %}
 
 %%
 
-\'(s|t|re|ve|m|ll|d)        { return SUFFIX; }
+\'(s|t|re|ve|m|ll|d)        { return PRE_TOKEN; }
 
-[ ][A-Za-z]+               { return SPACED_LETTER_SEQ; }
-[ ][0-9]+                   { return SPACED_NUMBER_SEQ; }
-[ ][^A-Za-z0-9 \t\n\r\f\v]+ { return SPACED_PUNCTUATION_SEQ; }
+[ ][A-Za-z]+               { return PRE_TOKEN; }
+[ ][0-9]+                   { return PRE_TOKEN; }
+[ ][^A-Za-z0-9 \t\n\r\f\v]+ { return PRE_TOKEN; }
 
-[A-Za-z]+                  { return LETTER_SEQ; }
-[0-9]+                     { return NUMBER_SEQ; }
-[^A-Za-z0-9 \t\n\r\f\v]+   { return PUNCTUATION_SEQ; }
+[A-Za-z]+                  { return PRE_TOKEN; }
+[0-9]+                     { return PRE_TOKEN; }
+[^A-Za-z0-9 \t\n\r\f\v]+   { return PRE_TOKEN; }
 
-[ \t\n\r\f\v]+             { return SPACE; }
+[ \t\n\r\f\v]+             { return PRE_TOKEN; }
 
-.                           { return FALLBACK_CHAR; }
+.                           { return PRE_TOKEN; }
 
 %%
