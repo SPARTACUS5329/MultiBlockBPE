@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include "tokenizer.cuh"
 
 #define MAX_SEQ_LEN 1024
 
@@ -70,10 +71,7 @@ int main(int argc, char *argv[])
 
   fclose(f);
 
-  for (auto &p : nextToken)
-  {
-    std::cout << p << " ";
-  }
+  launchHelloKernel();
 
   return 0;
 }
