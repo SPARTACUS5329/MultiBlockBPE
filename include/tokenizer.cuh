@@ -1,4 +1,15 @@
 #pragma once
 #include <cuda_runtime.h>
 
-void launchHelloKernel();
+#define CUDA_CHECK(expr)                                                                           \
+    do                                                                                             \
+    {                                                                                              \
+        cudaError_t _e = (expr);                                                                   \
+        if (_e != cudaSuccess)                                                                     \
+        {                                                                                          \
+            fprintf(stderr, "CUDA error %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(_e)); \
+            std::exit(1);                                                                          \
+        }                                                                                          \
+    } while (0)
+
+void launchTokenizeKernel(const int *tokens, const int *nextToken, int tokensLen);

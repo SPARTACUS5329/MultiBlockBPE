@@ -19,12 +19,6 @@ extern "C"
   };
 }
 
-void error(const char *msg)
-{
-  perror(msg);
-  exit(1);
-}
-
 int main(int argc, char *argv[])
 {
   if (argc < 2)
@@ -71,7 +65,30 @@ int main(int argc, char *argv[])
 
   fclose(f);
 
-  launchHelloKernel();
+  CUDA_CHECK(cudaSetDevice(0));
+  cudaStream_t stream;
+  CUDA_CHECK(cudaStreamCreate(&stream));
+
+  int *dTokens = nullptr, *dNextToken = nullptr;
+
+  CUDA_CHECK(cudaMalloc(&dTokens, tokens.size() * sizeof(int)));
+  CUDA_CHECK(cudaMalloc(&dNextToken, nextToken.size() * sizeof(int)));
+
+  CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+  CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+
+  if (tokens.size() != nextToken.size())
+  {
+    int argc = 2;
+    void *args[] = {dTokens, dNextToken};
+    gpuCleanup(argc, args, stream);
+    error("[main] tokens.size() and nextToken.size() don't match");
+  }
+
+  launchTokenizeKernel(dTokens, dNextToken, tokens.size());
+
+  CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+  CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
 
   return 0;
 }

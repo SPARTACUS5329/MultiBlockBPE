@@ -13,6 +13,4 @@ public:
 
   Token(int id, const std::string &val);
   ~Token() = default;
-
-  // void removeOccurrences(const std::vector<DLLToken *> &removables);
 };

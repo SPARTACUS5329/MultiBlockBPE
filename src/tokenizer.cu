@@ -2,15 +2,14 @@
 #include <cuda_runtime.h>
 #include <iostream>
 
-__global__ void hello_kernel()
+__global__ void tokenize(const int *__restrict__ tokens, const int *__restrict__ nextToken)
 {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-    printf("%d %d\n", row, col);
+    int threadId = blockIdx.x * blockDim.x + threadIdx.x;
+    printf("%d %d\n", threadId, tokens[threadId]);
 }
 
-void launchHelloKernel()
+void launchTokenizeKernel(const int *tokens, const int *nextToken, const int tokensLen)
 {
-    hello_kernel<<<1, 2>>>();
+    tokenize<<<1, tokensLen>>>(tokens, nextToken);
     cudaDeviceSynchronize();
 }
