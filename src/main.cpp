@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
     error("[main] tokens.size() and nextToken.size() don't match");
   }
 
-  launchTokenizeKernel(dTokens, dNextToken, tokens.size());
+  launchTokenizeKernel(dTokens, dNextToken, (int)tokens.size());
 
   CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
   CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));

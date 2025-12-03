@@ -12,4 +12,4 @@
         }                                                                                          \
     } while (0)
 
-void launchTokenizeKernel(const int *tokens, const int *nextToken, int tokensLen);
+void launchTokenizeKernel(int *tokens, int *nextToken, const int tokensLen);
