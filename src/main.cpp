@@ -19,6 +19,7 @@
 
 #include "utils.h"
 #include "merges.h"
+#include "byte_encoder.h"
 #include <iostream>
 #include <vector>
 #include <string>
@@ -45,6 +46,7 @@ int main(int argc, char *argv[]) {
     // -----------------------------------------
     auto vocab  = loadVocab("../assets/vocab.json");
     auto merges = loadMerges("../assets/vocab.bpe", vocab);
+    auto byte_encoder = bytes_to_unicode();
 
     std::cout << "Loaded vocab size:  " << vocab.size() << "\n";
     std::cout << "Loaded merges:      " << merges.rank_table.size() << "\n";
@@ -75,21 +77,12 @@ int main(int argc, char *argv[]) {
             for (int i = 0; yytext[i] != '\0'; i++) {
             //     std::string key(1, yytext[i]);
                 // unsigned char byte = yytext[i];
-                            unsigned char byte = static_cast<unsigned char>(yytext[i]);
+                unsigned char byte = static_cast<unsigned char>(yytext[i]);
 
-                std::string key;
-
-                if (byte == ' ') {
-                    key = "Ġ";  // GPT-2 encodes space as Ġ
-                } else if (byte == '\n') {
-                    key = "Ċ";       // newline
-                } 
-                else {
-                    key = std::string(1, byte);
-}
+                std::string key = byte_encoder[byte];
 
                 if (vocab.find(key) == vocab.end()) {
-                    std::cerr << "Unknown token in vocab: '" << key << "'\n";
+                    std::cerr << "Unknown token in vocab: '" << key << "' (byte " << (int)byte << ")\n";
                     return 1;
                 }
 
