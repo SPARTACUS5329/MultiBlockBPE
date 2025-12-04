@@ -21,20 +21,29 @@ std::string readFile(const std::string &path)
 
 using json = nlohmann::json;
 
-std::unordered_map<std::string, int> loadVocab(const std::string& path) {
-    std::ifstream f(path);
-    if (!f.is_open()) {
-        throw std::runtime_error("Could not open vocab.json!");
-    }
+std::unordered_map<std::string, int> loadVocab(const std::string &path)
+{
+  std::ifstream f(path);
+  if (!f.is_open())
+  {
+    throw std::runtime_error("Could not open vocab.json!");
+  }
 
-    json j;
-    f >> j;
+  json j;
+  f >> j;
 
-    std::unordered_map<std::string, int> vocab;
+  std::unordered_map<std::string, int> vocab;
 
-    for (auto& [token, id] : j.items()) {
-        vocab[token] = id.get<int>();
-    }
+  for (auto &[token, id] : j.items())
+  {
+    vocab[token] = id.get<int>();
+  }
 
-    return vocab;
+  return vocab;
+}
+
+void error(const char *msg)
+{
+  perror(msg);
+  exit(1);
 }
