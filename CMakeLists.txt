@@ -53,6 +53,7 @@ FLEX_TARGET(
 # =========================
 file(GLOB CPP_SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp)
 file(GLOB CU_SOURCES  ${CMAKE_SOURCE_DIR}/src/*.cu)
+message(STATUS "CPP sources: ${CPP_SOURCES}")
 
 # =========================
 # Build Executable

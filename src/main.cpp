@@ -1,12 +1,11 @@
 #include "utils.h"
-#include <cstdio>
+#include "merges.h"
+#include "byte_encoder.h"
 #include <iostream>
-#include <unordered_map>
 #include <vector>
 #include <string>
 #include "tokenizer.cuh"
-
-#define MAX_SEQ_LEN 1024
+#include <unordered_map>
 
 extern "C"
 {
@@ -21,45 +20,66 @@ extern "C"
 
 int main(int argc, char *argv[])
 {
+
   if (argc < 2)
   {
-    error("[main] Not enough input arguments: expected file address");
+    std::cerr << "Usage: ./MultiBlockBPE <input_file>\n";
+    return 1;
   }
 
-  const char *filename = argv[1];
-  FILE *f = fopen(filename, "r");
+  // -----------------------------------------
+  // 1. Load vocab and merges
+  // -----------------------------------------
+  auto vocab = loadVocab("./assets/vocab.json");
+  auto merges = loadMerges("./assets/vocab.bpe", vocab);
+  auto byte_encoder = bytes_to_unicode();
+
+  std::cout << "Loaded vocab size:  " << vocab.size() << "\n";
+  std::cout << "Loaded merges:      " << merges.rank_table.size() << "\n";
+
+  // -----------------------------------------
+  // 2. Open input file for lexing
+  // -----------------------------------------
+  FILE *f = fopen(argv[1], "r");
   if (!f)
-  {
-    error("[main] File not found");
-  }
+    error("[main] File open error");
 
   yyin = f;
 
-  int token;
+  // Output token list
   std::vector<int> tokens;
   std::vector<int> nextToken;
-  std::unordered_map<std::string, int> tokenIDMap;
-  // populate token_id_map from vocab.json
-  // token_id_map["\'"] = 12;
-  // token_id_map["s"] = 24;
 
+  int token;
+
+  // -----------------------------------------
+  // 3. Run lexer + convert characters → vocab IDs
+  // -----------------------------------------
   while ((token = yylex()) != 0)
   {
     switch (token)
     {
     case PRE_TOKEN:
-      // Parallelize the for loop
-      int i;
-      for (i = 0; yytext[i] != '\0'; i++)
+      for (int i = 0; yytext[i] != '\0'; i++)
       {
-        std::string key(1, yytext[i]);
-        tokens.push_back(tokenIDMap[key]);
+        unsigned char byte = static_cast<unsigned char>(yytext[i]);
+
+        std::string key = byte_encoder[byte];
+
+        if (vocab.find(key) == vocab.end())
+        {
+          std::cerr << "Unknown token in vocab: '" << key << "' (byte " << (int)byte << ")\n";
+          return 1;
+        }
+
+        tokens.push_back(vocab[key]);
         nextToken.push_back(i + 1);
       }
       nextToken.back() = -1;
       break;
     default:
-      std::cout << "[UNKNOWN] " << yytext << "\n";
+      error("[main] Invalid token lexeme received");
+      break;
     }
   }
 
@@ -89,6 +109,22 @@ int main(int argc, char *argv[])
 
   CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
   CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+
+  if (!nextToken.empty())
+    nextToken.back() = -1;
+
+  // -----------------------------------------
+  // 4. Debug print: tokens + next pointers
+  // -----------------------------------------
+  std::cout << "\nRaw tokens:\n";
+  for (int id : tokens)
+    std::cout << id << " ";
+  std::cout << "\n";
+
+  std::cout << "Next pointers:\n";
+  for (int nxt : nextToken)
+    std::cout << nxt << " ";
+  std::cout << "\n";
 
   return 0;
 }
