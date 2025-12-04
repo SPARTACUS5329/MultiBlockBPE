@@ -1,3 +1,7 @@
 build
 .cache
 .clangd
+.vscode/
+cccl/
+cuCollections/
+cmake*
