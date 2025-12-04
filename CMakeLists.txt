@@ -16,6 +16,7 @@ FLEX_TARGET(
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 file(GLOB CPP_SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp)
+message(STATUS "CPP sources: ${CPP_SOURCES}")
 
 add_executable(MultiBlockBPE
     ${CPP_SOURCES}
