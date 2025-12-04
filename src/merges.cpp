@@ -8,28 +8,33 @@ inline uint64_t packPair(int a, int b)
     return (uint64_t(a) << 32) | uint32_t(b);
 }
 
-MergeTables loadMerges(const std::string& path,
-                       const std::unordered_map<std::string, int>& vocab)
+std::unordered_map<uint64_t, uint64_t> loadMerges(const std::string &path,
+                                                  const std::unordered_map<std::string, int> &vocab)
 {
     std::ifstream file(path);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         throw std::runtime_error("ERROR: Could not open vocab.bpe file.");
     }
 
-    MergeTables tables;
+    std::unordered_map<uint64_t, uint64_t> rankTable;
     std::string line;
     int rank = 0;
 
-    while (std::getline(file, line)) {
+    while (std::getline(file, line))
+    {
 
-        if (line.empty()) continue;
-        if (line[0] == '#' || line[0] == ' ' || line[0] == '-') continue;
+        if (line.empty())
+            continue;
+        if (line[0] == '#' || line[0] == ' ' || line[0] == '-')
+            continue;
 
         std::stringstream ss(line);
         std::string A, B;
         ss >> A >> B;
 
-        if (A.empty() || B.empty()) continue;
+        if (A.empty() || B.empty())
+            continue;
 
         std::string merged = A + B;
 
@@ -38,7 +43,8 @@ MergeTables loadMerges(const std::string& path,
         auto itB = vocab.find(B);
         auto itM = vocab.find(merged);
 
-        if (itA == vocab.end() || itB == vocab.end() || itM == vocab.end()) {
+        if (itA == vocab.end() || itB == vocab.end() || itM == vocab.end())
+        {
             // Some merges exist in GPT-2 for bytes, skip if missing
             continue;
         }
@@ -49,11 +55,12 @@ MergeTables loadMerges(const std::string& path,
 
         uint64_t key = packPair(idA, idB);
 
-        tables.rank_table[key]  = rank;
-        tables.merge_table[key] = idM;
+        uint32_t rank32 = (uint32_t)rank;
+        uint32_t idM32 = (uint32_t)idM;
+        rankTable[key] = (uint64_t)((rank32 << 32) | idM32);
 
         rank++;
     }
 
-    return tables;
+    return rankTable;
 }

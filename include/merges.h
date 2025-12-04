@@ -3,10 +3,5 @@
 #include <unordered_map>
 #include <cstdint>
 
-struct MergeTables {
-    std::unordered_map<uint64_t, int> rank_table;
-    std::unordered_map<uint64_t, int> merge_table;
-};
-
-MergeTables loadMerges(const std::string& path,
-                       const std::unordered_map<std::string, int>& vocab);
+std::unordered_map<uint64_t, uint64_t> loadMerges(const std::string &path,
+                                                  const std::unordered_map<std::string, int> &vocab);

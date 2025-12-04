@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <chrono>
 #include "merges.h"
 #include "byte_encoder.h"
 #include <iostream>
@@ -31,11 +32,11 @@ int main(int argc, char *argv[])
   // 1. Load vocab and merges
   // -----------------------------------------
   auto vocab = loadVocab("./assets/vocab.json");
-  auto merges = loadMerges("./assets/vocab.bpe", vocab);
+  auto pairRankTable = loadMerges("./assets/vocab.bpe", vocab);
   auto byte_encoder = bytes_to_unicode();
 
   std::cout << "Loaded vocab size:  " << vocab.size() << "\n";
-  std::cout << "Loaded merges:      " << merges.rank_table.size() << "\n";
+  std::cout << "Loaded merges:      " << pairRankTable.size() << "\n";
 
   // -----------------------------------------
   // 2. Open input file for lexing
@@ -51,10 +52,12 @@ int main(int argc, char *argv[])
   std::vector<int> nextToken;
 
   int token;
+  int totalBytes = 0;
 
   // -----------------------------------------
   // 3. Run lexer + convert characters → vocab IDs
   // -----------------------------------------
+  auto start = std::chrono::high_resolution_clock::now();
   while ((token = yylex()) != 0)
   {
     switch (token)
@@ -63,14 +66,12 @@ int main(int argc, char *argv[])
       for (int i = 0; yytext[i] != '\0'; i++)
       {
         unsigned char byte = static_cast<unsigned char>(yytext[i]);
+        totalBytes++;
 
         std::string key = byte_encoder[byte];
 
         if (vocab.find(key) == vocab.end())
-        {
-          std::cerr << "Unknown token in vocab: '" << key << "' (byte " << (int)byte << ")\n";
-          return 1;
-        }
+          error("[main] Unknown token in vocab");
 
         tokens.push_back(vocab[key]);
         nextToken.push_back(i + 1);
@@ -82,6 +83,10 @@ int main(int argc, char *argv[])
       break;
     }
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double, std::milli> lexTime = end - start;
+
+  std::cout << "Lexing time: " << lexTime.count() << " ms\n";
 
   fclose(f);
 
@@ -96,6 +101,7 @@ int main(int argc, char *argv[])
 
   CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
   CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+  CUDA_CHECK(cudaStreamSynchronize(stream));
 
   if (tokens.size() != nextToken.size())
   {
@@ -105,13 +111,20 @@ int main(int argc, char *argv[])
     error("[main] tokens.size() and nextToken.size() don't match");
   }
 
-  // launchTokenizeKernel(dTokens, dNextToken, (int)tokens.size());
+  cudaEvent_t e0, e1;
+  CUDA_CHECK(cudaEventCreate(&e0));
+  CUDA_CHECK(cudaEventCreate(&e1));
 
-  CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
-  CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+  CUDA_CHECK(cudaEventRecord(e0, stream));
 
-  if (!nextToken.empty())
-    nextToken.back() = -1;
+  launchTokenizeKernel(dTokens, dNextToken, (int)tokens.size(), pairRankTable);
+
+  CUDA_CHECK(cudaEventRecord(e1, stream));
+  CUDA_CHECK(cudaEventSynchronize(e1));
+  double ms = elapsed_ms(e0, e1);
+
+  CUDA_CHECK(cudaMemcpy(tokens.data(), dTokens, tokens.size() * sizeof(int), cudaMemcpyDeviceToHost));
+  CUDA_CHECK(cudaMemcpy(nextToken.data(), dNextToken, nextToken.size() * sizeof(int), cudaMemcpyDeviceToHost));
 
   // -----------------------------------------
   // 4. Debug print: tokens + next pointers
@@ -121,10 +134,9 @@ int main(int argc, char *argv[])
     std::cout << id << " ";
   std::cout << "\n";
 
-  std::cout << "Next pointers:\n";
-  for (int nxt : nextToken)
-    std::cout << nxt << " ";
-  std::cout << "\n";
+  std::cout << "Total Bytes: " << totalBytes << " B\n";
+  std::cout << "Time taken: " << ms << " ms\n";
+  std::cout << "Throughput: " << totalBytes * 8 * 1e3 / ms << " Bps\n";
 
   return 0;
 }

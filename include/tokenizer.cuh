@@ -1,5 +1,6 @@
 #pragma once
 #include <cuda_runtime.h>
+#include <cstdint>
 
 #define CUDA_CHECK(expr)                                                                           \
     do                                                                                             \
@@ -12,4 +13,4 @@
         }                                                                                          \
     } while (0)
 
-void launchTokenizeKernel(int *tokens, int *nextToken, const int tokensLen);
+void launchTokenizeKernel(int *tokens, int *nextToken, const int tokensLen, const std::unordered_map<uint64_t, uint64_t> &pairRankTable);
