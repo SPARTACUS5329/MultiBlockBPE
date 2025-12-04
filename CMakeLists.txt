@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.30.4 FATAL_ERROR)
-
 project(MultiBlockBPE
     LANGUAGES C CXX CUDA
 )
@@ -14,7 +13,6 @@ include(${CMAKE_SOURCE_DIR}/cpm/CPM.cmake)
 # =========================
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
@@ -76,6 +74,14 @@ target_include_directories(MultiBlockBPE
         ${CMAKE_BINARY_DIR}/_deps/cccl-src/cub              # CUB
         ${CMAKE_BINARY_DIR}/_deps/cccl-src/thrust           # Thrust
         ${CMAKE_BINARY_DIR}/_deps/cccl-src/libcudacxx/include  # libcudacxx
+)
+
+# =========================
+# Link Libraries
+# =========================
+target_link_libraries(MultiBlockBPE
+    PRIVATE
+        rt  # Required for CUDA static runtime (shm_open)
 )
 
 # =========================
