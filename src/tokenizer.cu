@@ -44,8 +44,6 @@ __global__ void tokenize(
     // Iterate through merge passes
     while (*mergeFound)
     {
-        __syncthreads();
-
         if (threadIdx.x == 0)
             *mergeFound = 0;
 
@@ -78,11 +76,12 @@ __global__ void tokenize(
         __syncthreads();
 
         // Only the thread with minimum rank performs the merge
-        if (active && threadIdx.x == 0 && *minPos != -1)
+        if (active && *minPos == i)
         {
             int pos = *minPos;
             int next = nextToken[pos];
             tokens[pos] = mergedToken;
+            tokens[next] = -1;
             nextToken[pos] = nextToken[next];
             nextToken[next] = -1;
 
@@ -91,6 +90,8 @@ __global__ void tokenize(
             *minPos = -1;
             *mergeFound = 1;
         }
+
+        __syncthreads();
     }
 }
 

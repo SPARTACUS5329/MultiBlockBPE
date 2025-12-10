@@ -53,6 +53,7 @@ int main(int argc, char *argv[])
 
   int token;
   int totalBytes = 0;
+  int globalNext = 0;
 
   // -----------------------------------------
   // 3. Run lexer + convert characters → vocab IDs
@@ -74,7 +75,7 @@ int main(int argc, char *argv[])
           error("[main] Unknown token in vocab");
 
         tokens.push_back(vocab[key]);
-        nextToken.push_back(i + 1);
+        nextToken.push_back(++globalNext);
       }
       nextToken.back() = -1;
       break;
@@ -83,6 +84,7 @@ int main(int argc, char *argv[])
       break;
     }
   }
+
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double, std::milli> lexTime = end - start;
 
@@ -129,9 +131,14 @@ int main(int argc, char *argv[])
   // -----------------------------------------
   // 4. Debug print: tokens + next pointers
   // -----------------------------------------
+
   std::cout << "\nRaw tokens:\n";
   for (int id : tokens)
+  {
+    if (id == -1)
+      continue;
     std::cout << id << " ";
+  }
   std::cout << "\n";
 
   std::cout << "Total Bytes: " << totalBytes << " B\n";

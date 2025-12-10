@@ -54,10 +54,7 @@ std::unordered_map<uint64_t, uint64_t> loadMerges(const std::string &path,
         int idM = itM->second;
 
         uint64_t key = packPair(idA, idB);
-
-        uint32_t rank32 = (uint32_t)rank;
-        uint32_t idM32 = (uint32_t)idM;
-        rankTable[key] = (uint64_t)((rank32 << 32) | idM32);
+        rankTable[key] = packPair(rank, idM);
 
         rank++;
     }
