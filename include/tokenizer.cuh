@@ -1,17 +1,22 @@
 #pragma once
 #include <cuda_runtime.h>
 #include <unordered_map>
+#include <cuco/static_map.cuh>
 #include <cstdint>
 
-#define CUDA_CHECK(expr)                                                                           \
-    do                                                                                             \
-    {                                                                                              \
-        cudaError_t _e = (expr);                                                                   \
-        if (_e != cudaSuccess)                                                                     \
-        {                                                                                          \
-            fprintf(stderr, "CUDA error %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(_e)); \
-            std::exit(1);                                                                          \
-        }                                                                                          \
-    } while (0)
+using probing_scheme_type = cuco::linear_probing<1, cuco::murmurhash3_32<uint64_t>>;
+using map_type = cuco::static_map<
+    uint64_t,
+    uint64_t,
+    cuco::extent<std::size_t>,
+    cuda::thread_scope_device,
+    cuda::std::equal_to<uint64_t>,
+    probing_scheme_type>;
 
-void launchTokenizeKernel(int *tokens, int *nextToken, int tokensLen, std::unordered_map<uint64_t, uint64_t> pairRankTable);
+class DeviceHashTable
+{
+public:
+    map_type table;
+
+    DeviceHashTable(map_type &&t) : table(std::move(t)) {}
+};

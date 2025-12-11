@@ -2,7 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
-#include "tokenizer.cuh"
+#include "tokenizer_interface.h"
 #include <string>
 #include <unordered_map>
 #include "json.hpp"

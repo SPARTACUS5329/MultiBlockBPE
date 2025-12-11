@@ -2,7 +2,7 @@
 #include <cuda_runtime.h>
 #include <string>
 #include <unordered_map>
-#include "tokenizer.cuh"
+#include "tokenizer_interface.h"
 
 void error(const char *msg);
 void gpuCleanup(int argc, void *args[], cudaStream_t stream);

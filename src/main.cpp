@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include "tokenizer.cuh"
+#include "tokenizer_interface.h"
 #include <unordered_map>
 #define TOTAL_BATCH_SIZE 200000
 
@@ -60,6 +60,8 @@ int main(int argc, char *argv[])
   CUDA_CHECK(cudaMalloc(&dTokens, dSize * sizeof(int)));
   CUDA_CHECK(cudaMalloc(&dNextToken, dSize * sizeof(int)));
 
+  DeviceHashTable *d_pairRankTable = createDeviceHashTable(pairRankTable);
+
   // auto start = std::chrono::high_resolution_clock::now();
   while ((token = yylex()) != 0)
   {
@@ -108,40 +110,38 @@ int main(int argc, char *argv[])
 
       CUDA_CHECK(cudaEventRecord(e0, stream));
 
-      launchTokenizeKernel(dTokens, dNextToken, (int)tokens.size(), pairRankTable);
+      launchTokenizeKernel(dTokens, dNextToken, (int)tokens.size(), d_pairRankTable);
 
       CUDA_CHECK(cudaEventRecord(e1, stream));
       CUDA_CHECK(cudaEventSynchronize(e1));
+
       double ms = elapsed_ms(e0, e1);
       totalTime += ms;
+      std::cout << "ms: " << ms << "\n";
+      std::cout << "totalTime: " << totalTime << "\n";
 
       CUDA_CHECK(cudaMemcpy(tokens.data(), dTokens, tokens.size() * sizeof(int), cudaMemcpyDeviceToHost));
       CUDA_CHECK(cudaMemcpy(nextToken.data(), dNextToken, nextToken.size() * sizeof(int), cudaMemcpyDeviceToHost));
 
-      // std::cout << "\nRaw tokens:\n";
-      // for (int id : tokens)
-      // {
-      //   if (id == -1)
-      //     continue;
-      //   std::cout << id << " ";
-      // }
-      // std::cout << "\n";
+      std::cout << "\nRaw tokens:\n";
+      for (int id : tokens)
+      {
+        if (id == -1)
+          continue;
+        std::cout << id << " ";
+      }
+      std::cout << "\n";
 
       tokens.clear();
       nextToken.clear();
     }
   }
 
-  // auto end = std::chrono::high_resolution_clock::now();
-  // std::chrono::duration<double, std::milli> lexTime = end - start;
-
-  // std::cout << "Lexing time: " << lexTime.count() << " ms\n";
-
   fclose(f);
 
   std::cout << "Total Bytes: " << totalBytes << " B\n";
   std::cout << "Time taken: " << totalTime << " ms\n";
-  std::cout << "Throughput: " << totalBytes * 8 * 1e3 / totalTime << " Bps\n";
+  std::cout << "Throughput: " << totalBytes * 1e3 / totalTime << " Bps\n";
 
   CUDA_CHECK(cudaEventDestroy(e0));
   CUDA_CHECK(cudaEventDestroy(e1));

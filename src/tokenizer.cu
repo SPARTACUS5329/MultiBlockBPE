@@ -1,4 +1,5 @@
 #include "tokenizer.cuh"
+#include "tokenizer_interface.h"
 #include <cuda_runtime.h>
 #include <cuco/static_map.cuh>
 #include <climits>
@@ -93,7 +94,7 @@ __global__ void tokenize(
 }
 
 // Helper function to create and populate device hash table from host unordered_map
-map_type createDeviceHashTable(const std::unordered_map<uint64_t, uint64_t> &pairRankTable)
+DeviceHashTable *createDeviceHashTable(const std::unordered_map<uint64_t, uint64_t> &pairRankTable)
 {
     // Create device hash table with 2x capacity for good performance
     size_t capacity = pairRankTable.size() * 2;
@@ -131,18 +132,18 @@ map_type createDeviceHashTable(const std::unordered_map<uint64_t, uint64_t> &pai
             insert_ref.insert(cuco::make_pair(keys[i], values[i]));
         });
 
-    return table;
+    return new DeviceHashTable(std::move(table));
 }
 
 void launchTokenizeKernel(
     int *tokens,
     int *nextToken,
     const int N,
-    std::unordered_map<uint64_t, uint64_t> pairRankTable)
+    DeviceHashTable *pairRankTable)
 {
-    auto d_table = createDeviceHashTable(pairRankTable);
+    // auto d_table = createDeviceHashTable(pairRankTable);
 
-    auto d_view = d_table.ref(cuco::op::find);
+    auto d_view = pairRankTable->table.ref(cuco::op::find);
 
     // int block = 256;
     // int grid = (N + block - 1) / block;
