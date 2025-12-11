@@ -9,4 +9,4 @@ cd ./build
 cmake ..
 make
 cd ..
-./build/MultiBlockBPE ./assets/sample.txt
+./build/MultiBlockBPE ./assets/$1.txt

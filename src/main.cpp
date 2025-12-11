@@ -7,6 +7,7 @@
 #include <string>
 #include "tokenizer.cuh"
 #include <unordered_map>
+#define TOTAL_BATCH_SIZE 200000
 
 extern "C"
 {
@@ -28,9 +29,6 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  // -----------------------------------------
-  // 1. Load vocab and merges
-  // -----------------------------------------
   auto vocab = loadVocab("./assets/vocab.json");
   auto pairRankTable = loadMerges("./assets/vocab.bpe", vocab);
   auto byte_encoder = bytes_to_unicode();
@@ -38,27 +36,31 @@ int main(int argc, char *argv[])
   std::cout << "Loaded vocab size:  " << vocab.size() << "\n";
   std::cout << "Loaded merges:      " << pairRankTable.size() << "\n";
 
-  // -----------------------------------------
-  // 2. Open input file for lexing
-  // -----------------------------------------
   FILE *f = fopen(argv[1], "r");
   if (!f)
     error("[main] File open error");
 
   yyin = f;
 
-  // Output token list
   std::vector<int> tokens;
   std::vector<int> nextToken;
 
   int token;
   int totalBytes = 0;
-  int globalNext = 0;
+  double totalTime = 0;
+  int batches = 0;
 
-  // -----------------------------------------
-  // 3. Run lexer + convert characters → vocab IDs
-  // -----------------------------------------
-  auto start = std::chrono::high_resolution_clock::now();
+  CUDA_CHECK(cudaSetDevice(0));
+  cudaStream_t stream;
+  cudaEvent_t e0, e1;
+  CUDA_CHECK(cudaStreamCreate(&stream));
+
+  int *dTokens = nullptr, *dNextToken = nullptr;
+  int dSize = 1.5 * TOTAL_BATCH_SIZE;
+  CUDA_CHECK(cudaMalloc(&dTokens, dSize * sizeof(int)));
+  CUDA_CHECK(cudaMalloc(&dNextToken, dSize * sizeof(int)));
+
+  // auto start = std::chrono::high_resolution_clock::now();
   while ((token = yylex()) != 0)
   {
     switch (token)
@@ -75,7 +77,7 @@ int main(int argc, char *argv[])
           error("[main] Unknown token in vocab");
 
         tokens.push_back(vocab[key]);
-        nextToken.push_back(++globalNext);
+        nextToken.push_back(tokens.size());
       }
       nextToken.back() = -1;
       break;
@@ -83,67 +85,69 @@ int main(int argc, char *argv[])
       error("[main] Invalid token lexeme received");
       break;
     }
+
+    if (tokens.size() > TOTAL_BATCH_SIZE)
+    {
+      batches++;
+      printf("Merging batch: %d %d\n", batches, tokens.size());
+      fflush(0);
+      CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+      CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+      CUDA_CHECK(cudaStreamSynchronize(stream));
+
+      if (tokens.size() != nextToken.size())
+      {
+        int argc = 2;
+        void *args[] = {dTokens, dNextToken};
+        gpuCleanup(argc, args, stream);
+        error("[main] tokens.size() and nextToken.size() don't match");
+      }
+
+      CUDA_CHECK(cudaEventCreate(&e0));
+      CUDA_CHECK(cudaEventCreate(&e1));
+
+      CUDA_CHECK(cudaEventRecord(e0, stream));
+
+      launchTokenizeKernel(dTokens, dNextToken, (int)tokens.size(), pairRankTable);
+
+      CUDA_CHECK(cudaEventRecord(e1, stream));
+      CUDA_CHECK(cudaEventSynchronize(e1));
+      double ms = elapsed_ms(e0, e1);
+      totalTime += ms;
+
+      CUDA_CHECK(cudaMemcpy(tokens.data(), dTokens, tokens.size() * sizeof(int), cudaMemcpyDeviceToHost));
+      CUDA_CHECK(cudaMemcpy(nextToken.data(), dNextToken, nextToken.size() * sizeof(int), cudaMemcpyDeviceToHost));
+
+      // std::cout << "\nRaw tokens:\n";
+      // for (int id : tokens)
+      // {
+      //   if (id == -1)
+      //     continue;
+      //   std::cout << id << " ";
+      // }
+      // std::cout << "\n";
+
+      tokens.clear();
+      nextToken.clear();
+    }
   }
 
-  auto end = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double, std::milli> lexTime = end - start;
+  // auto end = std::chrono::high_resolution_clock::now();
+  // std::chrono::duration<double, std::milli> lexTime = end - start;
 
-  std::cout << "Lexing time: " << lexTime.count() << " ms\n";
+  // std::cout << "Lexing time: " << lexTime.count() << " ms\n";
 
   fclose(f);
 
-  CUDA_CHECK(cudaSetDevice(0));
-  cudaStream_t stream;
-  CUDA_CHECK(cudaStreamCreate(&stream));
-
-  int *dTokens = nullptr, *dNextToken = nullptr;
-
-  CUDA_CHECK(cudaMalloc(&dTokens, tokens.size() * sizeof(int)));
-  CUDA_CHECK(cudaMalloc(&dNextToken, nextToken.size() * sizeof(int)));
-
-  CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
-  CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
-  CUDA_CHECK(cudaStreamSynchronize(stream));
-
-  if (tokens.size() != nextToken.size())
-  {
-    int argc = 2;
-    void *args[] = {dTokens, dNextToken};
-    gpuCleanup(argc, args, stream);
-    error("[main] tokens.size() and nextToken.size() don't match");
-  }
-
-  cudaEvent_t e0, e1;
-  CUDA_CHECK(cudaEventCreate(&e0));
-  CUDA_CHECK(cudaEventCreate(&e1));
-
-  CUDA_CHECK(cudaEventRecord(e0, stream));
-
-  launchTokenizeKernel(dTokens, dNextToken, (int)tokens.size(), pairRankTable);
-
-  CUDA_CHECK(cudaEventRecord(e1, stream));
-  CUDA_CHECK(cudaEventSynchronize(e1));
-  double ms = elapsed_ms(e0, e1);
-
-  CUDA_CHECK(cudaMemcpy(tokens.data(), dTokens, tokens.size() * sizeof(int), cudaMemcpyDeviceToHost));
-  CUDA_CHECK(cudaMemcpy(nextToken.data(), dNextToken, nextToken.size() * sizeof(int), cudaMemcpyDeviceToHost));
-
-  // -----------------------------------------
-  // 4. Debug print: tokens + next pointers
-  // -----------------------------------------
-
-  std::cout << "\nRaw tokens:\n";
-  for (int id : tokens)
-  {
-    if (id == -1)
-      continue;
-    std::cout << id << " ";
-  }
-  std::cout << "\n";
-
   std::cout << "Total Bytes: " << totalBytes << " B\n";
-  std::cout << "Time taken: " << ms << " ms\n";
-  std::cout << "Throughput: " << totalBytes * 8 * 1e3 / ms << " Bps\n";
+  std::cout << "Time taken: " << totalTime << " ms\n";
+  std::cout << "Throughput: " << totalBytes * 8 * 1e3 / totalTime << " Bps\n";
+
+  CUDA_CHECK(cudaEventDestroy(e0));
+  CUDA_CHECK(cudaEventDestroy(e1));
+  CUDA_CHECK(cudaFree(dTokens));
+  CUDA_CHECK(cudaFree(dNextToken));
+  CUDA_CHECK(cudaStreamDestroy(stream));
 
   return 0;
 }

@@ -57,7 +57,6 @@ __global__ void tokenize(
 
         if (active)
         {
-            // Probe the hash table
             auto it = table.find(key);
             if (it != table.end())
             {
@@ -75,7 +74,6 @@ __global__ void tokenize(
 
         __syncthreads();
 
-        // Only the thread with minimum rank performs the merge
         if (active && *minPos == i)
         {
             int pos = *minPos;
@@ -85,7 +83,6 @@ __global__ void tokenize(
             nextToken[pos] = nextToken[next];
             nextToken[next] = -1;
 
-            // Reset for next iteration
             *minRank = INT_MAX;
             *minPos = -1;
             *mergeFound = 1;
@@ -141,13 +138,11 @@ void launchTokenizeKernel(
     int *tokens,
     int *nextToken,
     const int N,
-    const std::unordered_map<uint64_t, uint64_t> &pairRankTable)
+    std::unordered_map<uint64_t, uint64_t> pairRankTable)
 {
-    // Create and populate device hash table
-    map_type table = createDeviceHashTable(pairRankTable);
+    auto d_table = createDeviceHashTable(pairRankTable);
 
-    // Get device view for find operations
-    auto d_view = table.ref(cuco::find);
+    auto d_view = d_table.ref(cuco::op::find);
 
     // int block = 256;
     // int grid = (N + block - 1) / block;
