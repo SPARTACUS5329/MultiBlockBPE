@@ -1,13 +1,22 @@
-from rapidfuzz.distance import Levenshtein
+from Levenshtein import distance
 
-# Load sequences
-hf_ids = list(map(int, open("hf_tokens3.txt").read().split()))
-bbpe_ids = list(map(int, open("blockbpe_tokens3.txt").read().split()))
+# Load decoded texts
+with open("hf_decoded.txt", "r", encoding="utf8") as f:
+    hf_text = f.read()
 
-# Levenshtein on sequences of integers
-dist = Levenshtein.distance(hf_ids, bbpe_ids)
+with open("blockbpe_decoded.txt", "r", encoding="utf8") as f:
+    bpe_text = f.read()
 
-similarity = 1 - dist / max(len(hf_ids), len(bbpe_ids))
+# OPTIONAL: remove whitespace differences
+hf_text_clean  = "".join(hf_text.split())
+bpe_text_clean = "".join(bpe_text.split())
 
-print("Token-level Levenshtein distance:", dist)
-print("Similarity:", similarity)
+# Compute character-level edit distance
+dist = distance(hf_text_clean, bpe_text_clean)
+
+# Normalize by length
+max_len = max(len(hf_text_clean), len(bpe_text_clean))
+sim = 1 - dist / max_len if max_len > 0 else 1.0
+
+print(f"Levenshtein distance: {dist}")
+print(f"Similarity: {sim:.6f}")
