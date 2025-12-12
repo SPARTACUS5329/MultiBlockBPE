@@ -42,7 +42,6 @@ __global__ void tokenize(
 
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    // Iterate through merge passes
     while (*mergeFound)
     {
         if (threadIdx.x == 0)
@@ -141,14 +140,11 @@ void launchTokenizeKernel(
     const int N,
     DeviceHashTable *pairRankTable)
 {
-    // auto d_table = createDeviceHashTable(pairRankTable);
-
     auto d_view = pairRankTable->table.ref(cuco::op::find);
 
-    // int block = 256;
-    // int grid = (N + block - 1) / block;
+    int numBlocks = N / 1024;
 
-    tokenize<<<1, N, 4 * sizeof(int)>>>(tokens, nextToken, N, d_view);
+    tokenize<<<numBlocks, 1024, 4 * sizeof(int)>>>(tokens, nextToken, N, d_view);
 
     cudaDeviceSynchronize();
 }

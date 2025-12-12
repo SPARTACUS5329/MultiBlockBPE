@@ -8,5 +8,7 @@ mkdir -p build
 cd ./build
 cmake ..
 make
+cd ../assets
+rm out.txt
 cd ..
 ./build/MultiBlockBPE ./assets/$1.txt

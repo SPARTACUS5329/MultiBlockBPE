@@ -7,7 +7,7 @@
 #include <string>
 #include "tokenizer_interface.h"
 #include <unordered_map>
-#define TOTAL_BATCH_SIZE 200000
+#define TOTAL_BATCH_SIZE 20000
 
 extern "C"
 {
@@ -91,8 +91,6 @@ int main(int argc, char *argv[])
     if (tokens.size() > TOTAL_BATCH_SIZE)
     {
       batches++;
-      printf("Merging batch: %d %d\n", batches, tokens.size());
-      fflush(0);
       CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
       CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
       CUDA_CHECK(cudaStreamSynchronize(stream));
@@ -117,20 +115,11 @@ int main(int argc, char *argv[])
 
       double ms = elapsed_ms(e0, e1);
       totalTime += ms;
-      std::cout << "ms: " << ms << "\n";
-      std::cout << "totalTime: " << totalTime << "\n";
 
       CUDA_CHECK(cudaMemcpy(tokens.data(), dTokens, tokens.size() * sizeof(int), cudaMemcpyDeviceToHost));
       CUDA_CHECK(cudaMemcpy(nextToken.data(), dNextToken, nextToken.size() * sizeof(int), cudaMemcpyDeviceToHost));
 
-      std::cout << "\nRaw tokens:\n";
-      for (int id : tokens)
-      {
-        if (id == -1)
-          continue;
-        std::cout << id << " ";
-      }
-      std::cout << "\n";
+      writeTokensToFile(tokens, "./assets/out.txt");
 
       tokens.clear();
       nextToken.clear();
