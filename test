@@ -1,8 +1,14 @@
 #!/bin/bash
 
+module load cuda
+module load gcc-native/12.3
+module unload cray-mpich
+module load mpich
 mkdir -p build
 cd ./build
 cmake ..
 make
+cd ../assets
+rm out.txt
 cd ..
-./build/MultiBlockBPE ./assets/sample.txt
+./build/MultiBlockBPE ./assets/$1.txt

@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/**/include",
+                "${workspaceFolder}/**/include/**",
+                "/opt/nvidia/hpc_sdk/Linux_x86_64/25.5/cuda/12.9/include",
+                "${workspaceFolder}/cuCollections/include/cuco"
+            ],
+            "defines": [],
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
