@@ -8,6 +8,7 @@
 #include <string>
 #include "tokenizer_interface.h"
 #include <unordered_map>
+#define TOTAL_BATCH_SIZE 20000
 
 #define TOTAL_BATCH_SIZE 200000
 
