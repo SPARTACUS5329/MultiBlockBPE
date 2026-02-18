@@ -19,6 +19,7 @@ void launchTokenizeKernel(
     int *tokens,
     int *nextToken,
     const int N,
+    const int seq_len,
     DeviceHashTable *table);
 
 DeviceHashTable *createDeviceHashTable(

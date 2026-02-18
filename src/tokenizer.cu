@@ -138,13 +138,14 @@ void launchTokenizeKernel(
     int *tokens,
     int *nextToken,
     const int N,
+    const int seq_len,
     DeviceHashTable *pairRankTable)
 {
     auto d_view = pairRankTable->table.ref(cuco::op::find);
 
-    int numBlocks = N / 1024;
+    int numBlocks = N / seq_len;
 
-    tokenize<<<numBlocks, 1024, 4 * sizeof(int)>>>(tokens, nextToken, N, d_view);
+    tokenize<<<numBlocks, seq_len, 4 * sizeof(int)>>>(tokens, nextToken, N, d_view);
 
     cudaDeviceSynchronize();
 }
