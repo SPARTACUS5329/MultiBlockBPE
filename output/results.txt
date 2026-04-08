@@ -183,3 +183,15 @@ Throughput: 1.53722e+07 Bps
 Total Bytes: 3202320 B
 Time taken: 208.32 ms
 
+Batch size: 256
+Seq length: 781
+Throughput: 3.17119e+07 Bps
+Total Bytes: 3202320 B
+Time taken: 100.982 ms
+
+Batch size: 1024
+Seq length: 195
+Throughput: 1.36288e+08 Bps
+Total Bytes: 3202320 B
+Time taken: 23.4967 ms
+
