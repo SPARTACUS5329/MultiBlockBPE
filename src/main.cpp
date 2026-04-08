@@ -149,21 +149,22 @@ int main(int argc, char *argv[])
 
   fclose(f);
 
-  std::ofstream file("./output/results.txt", std::ios::app);
+  if (outputFile != "stdout")
+  {
+    std::ofstream file("./output/results.txt", std::ios::app);
 
-  if (!file.is_open())
-    error("[main] Failed to open results.txt\n");
+    if (!file.is_open())
+      error("[main] Failed to open results.txt\n");
 
-  auto *old_buf = std::cout.rdbuf();
-  std::cout.rdbuf(file.rdbuf());
+    auto *old_buf = std::cout.rdbuf();
+    std::cout.rdbuf(file.rdbuf());
+  }
 
   std::cout << "Batch size: " << BATCH_SIZE << "\n";
   std::cout << "Seq length: " << SEQ_LEN << "\n";
   std::cout << "Throughput: " << totalBytes * 1e3 / totalTime << " Bps\n"; // 1e3 because time is in ms
   std::cout << "Total Bytes: " << totalBytes << " B\n";
   std::cout << "Time taken: " << totalTime << " ms\n\n";
-
-  std::cout.rdbuf(old_buf);
 
   CUDA_CHECK(cudaEventDestroy(e0));
   CUDA_CHECK(cudaEventDestroy(e1));
