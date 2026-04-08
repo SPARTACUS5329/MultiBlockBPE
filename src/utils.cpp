@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include "tokenizer.cuh"
 #include <string>
+#include <vector>
 #include <unordered_map>
 #include "json.hpp"
 

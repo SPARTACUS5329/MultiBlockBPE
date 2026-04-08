@@ -1,6 +1,7 @@
 #pragma once
 #include <cuda_runtime.h>
 #include <string>
+#include <vector>
 #include <unordered_map>
 #include "tokenizer.cuh"
 

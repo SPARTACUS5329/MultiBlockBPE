@@ -4,9 +4,13 @@
 #include "byte_encoder.h"
 #include <iostream>
 #include <vector>
+#include <fstream>
 #include <string>
 #include "tokenizer.cuh"
 #include <unordered_map>
+#define TOTAL_BATCH_SIZE 20000
+
+#define TOTAL_BATCH_SIZE 200000
 
 extern "C"
 {
@@ -22,15 +26,12 @@ extern "C"
 int main(int argc, char *argv[])
 {
 
-  if (argc < 2)
+  if (argc < 4)
   {
     std::cerr << "Usage: ./MultiBlockBPE <input_file>\n";
     return 1;
   }
 
-  // -----------------------------------------
-  // 1. Load vocab and merges
-  // -----------------------------------------
   auto vocab = loadVocab("./assets/vocab.json");
   auto pairRankTable = loadMerges("./assets/vocab.bpe", vocab);
   auto byte_encoder = bytes_to_unicode();
@@ -38,16 +39,12 @@ int main(int argc, char *argv[])
   std::cout << "Loaded vocab size:  " << vocab.size() << "\n";
   std::cout << "Loaded merges:      " << pairRankTable.size() << "\n";
 
-  // -----------------------------------------
-  // 2. Open input file for lexing
-  // -----------------------------------------
   FILE *f = fopen(argv[1], "r");
   if (!f)
     error("[main] File open error");
 
   yyin = f;
 
-  // Output token list
   std::vector<int> tokens;
   std::vector<int> nextToken;
 
@@ -74,13 +71,55 @@ int main(int argc, char *argv[])
           error("[main] Unknown token in vocab");
 
         tokens.push_back(vocab[key]);
-        nextToken.push_back(i + 1);
+        nextToken.push_back(tokens.size());
       }
       nextToken.back() = -1;
       break;
     default:
       error("[main] Invalid token lexeme received");
       break;
+    }
+
+    if (tokens.size() >= TOTAL_BATCH_SIZE)
+    {
+      batches++;
+      CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+      CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+      CUDA_CHECK(cudaStreamSynchronize(stream));
+
+      if (tokens.size() != nextToken.size())
+      {
+        int argc = 2;
+        void *args[] = {dTokens, dNextToken};
+        gpuCleanup(argc, args, stream);
+        error("[main] tokens.size() and nextToken.size() don't match");
+      }
+
+      CUDA_CHECK(cudaEventCreate(&e0));
+      CUDA_CHECK(cudaEventCreate(&e1));
+
+      CUDA_CHECK(cudaEventRecord(e0, stream));
+
+      launchTokenizeKernel(dTokens, dNextToken, (int)tokens.size(), SEQ_LEN, d_pairRankTable);
+
+      CUDA_CHECK(cudaEventRecord(e1, stream));
+      CUDA_CHECK(cudaEventSynchronize(e1));
+
+      double ms = elapsed_ms(e0, e1);
+      totalTime += ms;
+
+      CUDA_CHECK(cudaMemcpy(tokens.data(), dTokens, tokens.size() * sizeof(int), cudaMemcpyDeviceToHost));
+      CUDA_CHECK(cudaMemcpy(nextToken.data(), dNextToken, nextToken.size() * sizeof(int), cudaMemcpyDeviceToHost));
+
+      std::string outputFile =
+          "./output/out_" +
+          std::to_string(BATCH_SIZE) + "_" +
+          std::to_string(SEQ_LEN) +
+          ".txt";
+      writeTokensToFile(tokens, outputFile);
+
+      tokens.clear();
+      nextToken.clear();
     }
   }
   auto end = std::chrono::high_resolution_clock::now();
