@@ -8,8 +8,6 @@
 #include <string>
 #include "tokenizer_interface.h"
 #include <unordered_map>
-#define TOTAL_BATCH_SIZE 20000
-
 #define TOTAL_BATCH_SIZE 200000
 
 extern "C"
@@ -26,9 +24,10 @@ extern "C"
 int main(int argc, char *argv[])
 {
 
-  if (argc < 4)
+  if (argc < 5)
   {
-    std::cerr << "Usage: ./MultiBlockBPE <input_file>\n";
+    // <mode> is SEQ or BATCH
+    std::cerr << "Usage: ./MultiBlockBPE <input_file> <output_file> <mode> <value>\n";
     return 1;
   }
 
@@ -42,23 +41,26 @@ int main(int argc, char *argv[])
   int BATCH_SIZE;
   int SEQ_LEN;
 
-  if (std::string(argv[2]) == "seq_len")
+  if (std::string(argv[3]) == "SEQ")
   {
-    SEQ_LEN = atoi(argv[3]);
+    SEQ_LEN = atoi(argv[4]);
     BATCH_SIZE = TOTAL_BATCH_SIZE / SEQ_LEN;
   }
-  else if (std::string(argv[2]) == "batch_size")
+  else if (std::string(argv[3]) == "BATCH")
   {
-    BATCH_SIZE = atoi(argv[3]);
+    BATCH_SIZE = atoi(argv[4]);
     SEQ_LEN = TOTAL_BATCH_SIZE / BATCH_SIZE;
   }
   else
   {
     std::cout << argv[2];
-    error("[main] Invalid independent parameter, expected \"seq_len\" or \"batch_size\"");
+    error("[main] Invalid independent parameter, expected \"SEQ\" or \"BATCH\"");
   }
 
-  FILE *f = fopen(argv[1], "r");
+  std::string inputFile = argv[1];
+  std::string outputFile = argv[2];
+
+  FILE *f = fopen(inputFile.c_str(), "r");
   if (!f)
     error("[main] File open error");
 
@@ -70,7 +72,6 @@ int main(int argc, char *argv[])
   int token;
   int totalBytes = 0;
   double totalTime = 0;
-  int batches = 0;
 
   CUDA_CHECK(cudaSetDevice(0));
   cudaStream_t stream;
@@ -84,7 +85,6 @@ int main(int argc, char *argv[])
 
   DeviceHashTable *d_pairRankTable = createDeviceHashTable(pairRankTable);
 
-  // auto start = std::chrono::high_resolution_clock::now();
   while ((token = yylex()) != 0)
   {
     switch (token)
@@ -112,7 +112,6 @@ int main(int argc, char *argv[])
 
     if (tokens.size() >= TOTAL_BATCH_SIZE)
     {
-      batches++;
       CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
       CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
       CUDA_CHECK(cudaStreamSynchronize(stream));
@@ -141,11 +140,6 @@ int main(int argc, char *argv[])
       CUDA_CHECK(cudaMemcpy(tokens.data(), dTokens, tokens.size() * sizeof(int), cudaMemcpyDeviceToHost));
       CUDA_CHECK(cudaMemcpy(nextToken.data(), dNextToken, nextToken.size() * sizeof(int), cudaMemcpyDeviceToHost));
 
-      std::string outputFile =
-          "./output/out_" +
-          std::to_string(BATCH_SIZE) + "_" +
-          std::to_string(SEQ_LEN) +
-          ".txt";
       writeTokensToFile(tokens, outputFile);
 
       tokens.clear();
@@ -160,14 +154,14 @@ int main(int argc, char *argv[])
   if (!file.is_open())
     error("[main] Failed to open results.txt\n");
 
-  auto *old_buf = std::cout.rdbuf(); // Save original buffer
-  std::cout.rdbuf(file.rdbuf());     // Redirect to file
+  auto *old_buf = std::cout.rdbuf();
+  std::cout.rdbuf(file.rdbuf());
 
   std::cout << "Batch size: " << BATCH_SIZE << "\n";
   std::cout << "Seq length: " << SEQ_LEN << "\n";
   std::cout << "Throughput: " << totalBytes * 1e3 / totalTime << " Bps\n"; // 1e3 because time is in ms
   std::cout << "Total Bytes: " << totalBytes << " B\n";
-  std::cout << "Time taken: " << totalTime << " ms\n";
+  std::cout << "Time taken: " << totalTime << " ms\n\n";
 
   std::cout.rdbuf(old_buf);
 

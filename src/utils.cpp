@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -61,19 +62,28 @@ void gpuCleanup(int argc, void *args[], cudaStream_t stream)
 
 void writeTokensToFile(const std::vector<int> &tokens, const std::string &filename)
 {
-  std::ofstream out(filename, std::ios::app); // <-- append mode
-  if (!out.is_open())
+  std::ostream *out;
+  std::ofstream fileOut;
+
+  if (filename == "stdout")
   {
-    throw std::runtime_error("Failed to open output file: " + filename);
+    out = &std::cout;
+  }
+  else
+  {
+    fileOut.open(filename, std::ios::app);
+    if (!fileOut.is_open())
+    {
+      throw std::runtime_error("Failed to open output file: " + filename);
+    }
+    out = &fileOut;
   }
 
   for (int id : tokens)
   {
     if (id == -1)
       continue;
-
-    out << id << " ";
+    *out << id << " ";
   }
-
-  out << "\n"; // new line for each call
+  *out << "\n";
 }

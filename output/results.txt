@@ -45,3 +45,141 @@ Seq length: 1024
 Throughput: 2.84659e+07 Bps
 Total Bytes: 3202320 B
 Time taken: 112.497 ms
+
+Batch size: 256
+Seq length: 781
+Throughput: 3.43128e+07 Bps
+Total Bytes: 3202320 B
+Time taken: 93.3273 ms
+Batch size: 256
+Seq length: 781
+Throughput: 3.26887e+07 Bps
+Total Bytes: 3202320 B
+Time taken: 97.9641 ms
+
+Batch size: 512
+Seq length: 390
+Throughput: 6.96918e+07 Bps
+Total Bytes: 3202320 B
+Time taken: 45.9497 ms
+
+Batch size: 768
+Seq length: 260
+Throughput: 1.07955e+08 Bps
+Total Bytes: 3202320 B
+Time taken: 29.6636 ms
+
+Batch size: 1024
+Seq length: 195
+Throughput: 1.52219e+08 Bps
+Total Bytes: 3202320 B
+Time taken: 21.0376 ms
+
+Batch size: 1562
+Seq length: 128
+Throughput: 2.36364e+08 Bps
+Total Bytes: 3202320 B
+Time taken: 13.5483 ms
+
+Batch size: 781
+Seq length: 256
+Throughput: 1.1835e+08 Bps
+Total Bytes: 3202320 B
+Time taken: 27.058 ms
+
+Batch size: 390
+Seq length: 512
+Throughput: 5.89226e+07 Bps
+Total Bytes: 3202320 B
+Time taken: 54.3479 ms
+
+Batch size: 195
+Seq length: 1024
+Throughput: 2.94886e+07 Bps
+Total Bytes: 3202320 B
+Time taken: 108.595 ms
+
+Batch size: 256
+Seq length: 781
+Throughput: 3.37485e+07 Bps
+Total Bytes: 6709576 B
+Time taken: 198.811 ms
+
+Batch size: 256
+Seq length: 781
+Throughput: 3.40161e+07 Bps
+Total Bytes: 6709576 B
+Time taken: 197.247 ms
+
+Batch size: 256
+Seq length: 781
+Throughput: 3.16171e+07 Bps
+Total Bytes: 3202320 B
+Time taken: 101.285 ms
+
+Batch size: 512
+Seq length: 390
+Throughput: 6.90571e+07 Bps
+Total Bytes: 3202320 B
+Time taken: 46.3721 ms
+
+Batch size: 768
+Seq length: 260
+Throughput: 1.12403e+08 Bps
+Total Bytes: 3202320 B
+Time taken: 28.4897 ms
+
+Batch size: 1024
+Seq length: 195
+Throughput: 1.46539e+08 Bps
+Total Bytes: 3202320 B
+Time taken: 21.853 ms
+
+Batch size: 1562
+Seq length: 128
+Throughput: 2.29738e+08 Bps
+Total Bytes: 3202320 B
+Time taken: 13.939 ms
+
+Batch size: 781
+Seq length: 256
+Throughput: 1.1689e+08 Bps
+Total Bytes: 3202320 B
+Time taken: 27.3961 ms
+
+Batch size: 390
+Seq length: 512
+Throughput: 5.74629e+07 Bps
+Total Bytes: 3202320 B
+Time taken: 55.7285 ms
+
+Batch size: 195
+Seq length: 1024
+Throughput: 3.03393e+07 Bps
+Total Bytes: 3202320 B
+Time taken: 105.55 ms
+
+Batch size: 256
+Seq length: 781
+Throughput: 3.23177e+07 Bps
+Total Bytes: 6709576 B
+Time taken: 207.613 ms
+
+Batch size: 256
+Seq length: 781
+Throughput: 3.30352e+07 Bps
+Total Bytes: 6709576 B
+Time taken: 203.104 ms
+
+Batch size: 256
+Seq length: 781
+Throughput: 3.40421e+07 Bps
+Total Bytes: 6709576 B
+Time taken: 197.096 ms
+
+Batch size: 195
+Seq length: 1024
+Throughput: 1.53722e+07 Bps
+Total Bytes: 3202320 B
+Time taken: 208.32 ms
+

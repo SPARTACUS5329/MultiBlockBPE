@@ -1,20 +1,5 @@
 #!/bin/bash
 
-# load required modules
-module load cuda
-module load gcc-native/12.3
-module unload cray-mpich
-module load mpich
-
-# cmake requirements
-mkdir -p build
-cd ./build
-cmake ..
-make
-cd ../assets
-rm out.txt
-cd ..
-
 # Usage:
 # Sweep mode:   ./test <filename> all
 # Single mode:  ./test <filename> <BATCH_SIZE> <SEQ_LEN>
@@ -36,12 +21,12 @@ if [ "$2" == "all" ]; then
 
     for BATCH in "${BATCH_SIZES[@]}"; do
         echo "Running with BATCH_SIZE=$BATCH"
-        ./build/MultiBlockBPE ./assets/${FILE}.txt batch_size $BATCH
+        ./build/MultiBlockBPE ./assets/${FILE}.txt ./output/token_ids_BATCH_${BATCH}.txt BATCH $BATCH
     done
 
     for SEQ in "${SEQ_LENS[@]}"; do
         echo "Running with SEQ_LEN=$SEQ"
-        ./build/MultiBlockBPE ./assets/${FILE}.txt seq_len $SEQ
+        ./build/MultiBlockBPE ./assets/${FILE}.txt ./output/token_ids_SEQ_${SEQ}.txt SEQ $SEQ
     done
 
 # Otherwise, treat $2 and $3 as explicit inputs
@@ -56,5 +41,5 @@ else
     VALUE=$3
 
     echo "Running mode=$MODE value=$VALUE"
-    ./build/MultiBlockBPE ./assets/${FILE}.txt $MODE $VALUE
+    ./build/MultiBlockBPE ./assets/${FILE}.txt ./output/token_ids_${MODE}_${VALUE}.txt $MODE $VALUE
 fi
