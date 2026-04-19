@@ -1,4 +1,5 @@
 #include "tokenizer.cuh"
+#include <math.h>
 #include "tokenizer_interface.h"
 #include <cuda_runtime.h>
 #include <cuco/static_map.cuh>
@@ -143,7 +144,7 @@ void launchTokenizeKernel(
 {
     auto d_view = pairRankTable->table.ref(cuco::op::find);
 
-    int numBlocks = N / seq_len;
+    int numBlocks = (N + seq_len - 1) / seq_len;
 
     tokenize<<<numBlocks, seq_len, 4 * sizeof(int)>>>(tokens, nextToken, N, d_view);
 
