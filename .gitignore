@@ -6,3 +6,15 @@ cccl/
 cuCollections/
 cmake*
 ./scripts/modules_loaded
+.ipynb_checkpoints/
+assets/.ipynb_checkpoints/
+benchmark/.ipynb_checkpoints
+benchmark/a.py
+comparison_summary.txt
+cpp_tokens_output.txt
+hf_tokens_output.txt
+output/.ipynb_checkpoints
+scripts/.ipynb_checkpoints
+src/.ipynb_checkpoints
+tokens_500_chunks.txt
+
