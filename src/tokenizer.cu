@@ -1,5 +1,6 @@
 #include "tokenizer.cuh"
 #include <math.h>
+#include <stdio.h>
 #include "tokenizer_interface.h"
 #include <cuda_runtime.h>
 #include <cuco/static_map.cuh>
