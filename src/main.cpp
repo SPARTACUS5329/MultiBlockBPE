@@ -21,13 +21,48 @@ extern "C"
   };
 }
 
+void tokenizeBatch(std::vector<int> &tokens, std::vector<int> &nextToken, int SEQ_LEN, DeviceHashTable *d_pairRankTable, int *dTokens, int *dNextToken, cudaStream_t stream, double &totalTime, const std::string &outputFile, cudaEvent_t &e0, cudaEvent_t &e1)
+{
+  CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+  CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+
+  if (tokens.size() != nextToken.size())
+  {
+    int argc = 2;
+    void *args[] = {dTokens, dNextToken};
+    gpuCleanup(argc, args, stream);
+    error("[main] tokens.size() and nextToken.size() don't match");
+  }
+
+  CUDA_CHECK(cudaEventCreate(&e0));
+  CUDA_CHECK(cudaEventCreate(&e1));
+
+  CUDA_CHECK(cudaEventRecord(e0, stream));
+
+  launchTokenizeKernel(dTokens, dNextToken, (int)tokens.size(), SEQ_LEN, d_pairRankTable);
+
+  CUDA_CHECK(cudaEventRecord(e1, stream));
+  CUDA_CHECK(cudaEventSynchronize(e1));
+
+  double ms = elapsed_ms(e0, e1);
+  totalTime += ms;
+
+  CUDA_CHECK(cudaMemcpy(tokens.data(), dTokens, tokens.size() * sizeof(int), cudaMemcpyDeviceToHost));
+  CUDA_CHECK(cudaMemcpy(nextToken.data(), dNextToken, nextToken.size() * sizeof(int), cudaMemcpyDeviceToHost));
+
+  writeTokensToFile(tokens, outputFile);
+
+  tokens.clear();
+  nextToken.clear();
+}
+
 int main(int argc, char *argv[])
 {
 
   if (argc < 5)
   {
-    // <mode> is SEQ or BATCH
-    std::cerr << "Usage: ./MultiBlockBPE <input_file> <output_file> <mode> <value>\n";
+    std::cerr << "Usage: ./MultiBlockBPE <input_file> <output_file|stdout> <mode[SEQ|BATCH]> <value>\n";
     return 1;
   }
 
@@ -112,39 +147,13 @@ int main(int argc, char *argv[])
 
     if (tokens.size() >= TOTAL_BATCH_SIZE)
     {
-      CUDA_CHECK(cudaMemcpyAsync(dTokens, tokens.data(), tokens.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
-      CUDA_CHECK(cudaMemcpyAsync(dNextToken, nextToken.data(), nextToken.size() * sizeof(int), cudaMemcpyHostToDevice, stream));
-      CUDA_CHECK(cudaStreamSynchronize(stream));
-
-      if (tokens.size() != nextToken.size())
-      {
-        int argc = 2;
-        void *args[] = {dTokens, dNextToken};
-        gpuCleanup(argc, args, stream);
-        error("[main] tokens.size() and nextToken.size() don't match");
-      }
-
-      CUDA_CHECK(cudaEventCreate(&e0));
-      CUDA_CHECK(cudaEventCreate(&e1));
-
-      CUDA_CHECK(cudaEventRecord(e0, stream));
-
-      launchTokenizeKernel(dTokens, dNextToken, (int)tokens.size(), SEQ_LEN, d_pairRankTable);
-
-      CUDA_CHECK(cudaEventRecord(e1, stream));
-      CUDA_CHECK(cudaEventSynchronize(e1));
-
-      double ms = elapsed_ms(e0, e1);
-      totalTime += ms;
-
-      CUDA_CHECK(cudaMemcpy(tokens.data(), dTokens, tokens.size() * sizeof(int), cudaMemcpyDeviceToHost));
-      CUDA_CHECK(cudaMemcpy(nextToken.data(), dNextToken, nextToken.size() * sizeof(int), cudaMemcpyDeviceToHost));
-
-      writeTokensToFile(tokens, outputFile);
-
-      tokens.clear();
-      nextToken.clear();
+      tokenizeBatch(tokens, nextToken, SEQ_LEN, d_pairRankTable, dTokens, dNextToken, stream, totalTime, outputFile, e0, e1);
     }
+  }
+
+  if (tokens.size() > 0)
+  {
+    tokenizeBatch(tokens, nextToken, SEQ_LEN, d_pairRankTable, dTokens, dNextToken, stream, totalTime, outputFile, e0, e1);
   }
 
   fclose(f);
