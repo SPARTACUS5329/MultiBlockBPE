@@ -29,14 +29,12 @@ __global__ void tokenize(
     map_ref_type table)
 {
     extern __shared__ int sdata[];
-    int *minRank = &sdata[0];
-    int *minPos = &sdata[1];
-    int *mergeFound = &sdata[2];
+    uint64_t *minRP = (uint64_t *)&sdata[0];
+    int *mergeFound = (int *)&sdata[2];
 
     if (threadIdx.x == 0)
     {
-        *minRank = INT_MAX;
-        *minPos = -1;
+        *minRP = ((uint64_t)INT_MAX << 32) | (uint64_t(0xffffffff));
         *mergeFound = 1;
     }
 
@@ -66,27 +64,31 @@ __global__ void tokenize(
                 rank = int(packed >> 32);
                 mergedToken = int(packed & 0xffffffffU);
 
-                int old = atomicMin(minRank, rank);
-                if (rank < old)
+                uint64_t candidate = (uint64_t(uint32_t(rank)) << 32) | uint64_t(uint32_t(i));
+                uint64_t old = *minRP;
+                while (candidate < old)
                 {
-                    atomicExch(minPos, i);
+                    uint64_t prev = atomicCAS((unsigned long long *)minRP, old, candidate);
+                    if (prev == old)
+                        break;
+                    old = prev;
                 }
             }
         }
 
         __syncthreads();
 
-        if (active && *minPos == i)
+        int winPos = int(*minRP & 0xffffffffU);
+        if (active && winPos == i)
         {
-            int pos = *minPos;
+            int pos = winPos;
             int next = nextToken[pos];
             tokens[pos] = mergedToken;
             tokens[next] = -1;
             nextToken[pos] = nextToken[next];
             nextToken[next] = -1;
 
-            *minRank = INT_MAX;
-            *minPos = -1;
+            *minRP = ((uint64_t)INT_MAX << 32) | (uint64_t(0xffffffff));
             *mergeFound = 1;
         }
 
