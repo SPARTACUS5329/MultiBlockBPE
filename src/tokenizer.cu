@@ -29,69 +29,65 @@ __global__ void tokenize(
     map_ref_type table)
 {
     extern __shared__ int sdata[];
-    uint64_t *minRP = (uint64_t *)&sdata[0];
-    int *mergeFound = (int *)&sdata[2];
+    uint64_t *tree = (uint64_t *)sdata;
+    int *mergeFound = (int *)&sdata[2 * blockDim.x];
 
     if (threadIdx.x == 0)
-    {
-        *minRP = ((uint64_t)INT_MAX << 32) | (uint64_t(0xffffffff));
         *mergeFound = 1;
-    }
-
     __syncthreads();
 
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
     while (*mergeFound)
     {
+        __syncthreads();
         if (threadIdx.x == 0)
             *mergeFound = 0;
 
-        int j = nextToken[i];
-        bool active = j != -1;
         int rank = -1;
         int mergedToken = -1;
-        int a = tokens[i];
-        int b = tokens[j];
-        uint64_t key = (uint64_t(uint32_t(a)) << 32) | uint64_t(uint32_t(b));
+        uint64_t candidate = 0xffffffffffffffffULL;
 
-        if (active)
+        int j = nextToken[i];
+        if (j != -1)
         {
+            int a = tokens[i];
+            int b = tokens[j];
+            uint64_t key = (uint64_t(uint32_t(a)) << 32) | uint64_t(uint32_t(b));
             auto it = table.find(key);
             if (it != table.end())
             {
                 uint64_t packed = it->second;
                 rank = int(packed >> 32);
                 mergedToken = int(packed & 0xffffffffU);
-
-                uint64_t candidate = (uint64_t(uint32_t(rank)) << 32) | uint64_t(uint32_t(i));
-                uint64_t old = *minRP;
-                while (candidate < old)
-                {
-                    uint64_t prev = atomicCAS((unsigned long long *)minRP, old, candidate);
-                    if (prev == old)
-                        break;
-                    old = prev;
-                }
+                candidate = (uint64_t(uint32_t(rank)) << 32) | uint64_t(uint32_t(i));
             }
         }
 
+        tree[threadIdx.x] = candidate;
         __syncthreads();
 
-        int winPos = int(*minRP & 0xffffffffU);
-        if (active && winPos == i)
+        for (int stride = blockDim.x / 2; stride > 0; stride >>= 1)
         {
-            int pos = winPos;
-            int next = nextToken[pos];
-            tokens[pos] = mergedToken;
-            tokens[next] = -1;
-            nextToken[pos] = nextToken[next];
-            nextToken[next] = -1;
-
-            *minRP = ((uint64_t)INT_MAX << 32) | (uint64_t(0xffffffff));
-            *mergeFound = 1;
+            if (threadIdx.x < stride)
+            {
+                if (tree[threadIdx.x + stride] < tree[threadIdx.x])
+                    tree[threadIdx.x] = tree[threadIdx.x + stride];
+            }
+            __syncthreads();
         }
 
+        int winPos = int(tree[0] & 0xffffffffU);
+
+        if (i == winPos)
+        {
+            int next = nextToken[winPos];
+            tokens[winPos] = mergedToken;
+            tokens[next] = -1;
+            nextToken[winPos] = nextToken[next];
+            nextToken[next] = -1;
+            *mergeFound = 1;
+        }
         __syncthreads();
     }
 }
@@ -148,8 +144,9 @@ void launchTokenizeKernel(
     auto d_view = pairRankTable->table.ref(cuco::op::find);
 
     int numBlocks = (N + seq_len - 1) / seq_len;
+    size_t sharedMem = seq_len * sizeof(uint64_t) + sizeof(int);
 
-    tokenize<<<numBlocks, seq_len, 4 * sizeof(int)>>>(tokens, nextToken, N, d_view);
+    tokenize<<<numBlocks, seq_len, sharedMem>>>(tokens, nextToken, N, d_view);
 
     cudaDeviceSynchronize();
 }
